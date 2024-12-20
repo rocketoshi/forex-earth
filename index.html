@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex.Earth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background: #333;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            margin: 0 5px;
+            cursor: pointer;
+            background-color: #ddd;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .tab.active {
+            background-color: #333;
+            color: #fff;
+        }
+        .table-container {
+            overflow-x: auto;
+            display: none;
+        }
+        .table-container.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+        }
+        img {
+            height: 20px;
+            width: 20px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            margin: 0 5px;
+            padding: 10px 15px;
+            border: none;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .pagination button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Forex.Earth</h1>
+        <p>Real-Time Cryptocurrency and Forex Prices</p>
+    </header>
+    <div class="content">
+        <div class="tabs">
+            <div class="tab active" data-tab="forex">Foreign Exchange</div>
+            <div class="tab" data-tab="crypto">Cryptocurrency</div>
+        </div>
+
+        <div class="table-container active" id="forex-container">
+            <h2>Forex Prices</h2>
+            <p class="error-message" id="forex-error"></p>
+            <table id="forex-table">
+                <thead>
+                    <tr>
+                        <th>Currency Pair</th>
+                        <th>Rate</th>
+                        <th>Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated here dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-container" id="crypto-container">
+            <h2>Cryptocurrency Prices</h2>
+            <p class="error-message" id="crypto-error"></p>
+            <table id="crypto-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('name')">Name</th>
+                        <th onclick="sortTable('price')">Price (USD)</th>
+                        <th onclick="sortTable('market_cap')">Market Cap</th>
+                        <th>Change (24h)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated here dynamically -->
+                </tbody>
+            </table>
+            <div class="pagination">
+                <button id="prev-page" disabled>Previous</button>
+                <button id="next-page">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const perPage = 100;
+
+        async function fetchData(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                return null;
+            }
+        }
+
+        async function updateCryptoPrices(page = 1) {
+            const errorElement = document.getElementById('crypto-error');
+            const tableBody = document.querySelector('#crypto-table tbody');
+            const prevButton = document.getElementById('prev-page');
+            const nextButton = document.getElementById('next-page');
+            tableBody.innerHTML = '';
+
+            const cryptoData = await fetchData(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=${perPage}&page=${page}`);
+            if (cryptoData && cryptoData.length > 0) {
+                cryptoData.forEach(coin => {
+                    const row = `<tr>
+                        <td><img src="${coin.image}" alt="${coin.name} logo">${coin.name}</td>
+                        <td>$${coin.current_price.toLocaleString()}</td>
+                        <td>$${coin.market_cap.toLocaleString()}</td>
+                        <td>${coin.price_change_percentage_24h.toFixed(2)}%</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+
+                errorElement.textContent = '';
+                currentPage = page;
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled = cryptoData.length < perPage;
+            } else {
+                errorElement.textContent = 'Failed to load cryptocurrency data.';
+                if (page > 1) {
+                    currentPage = page - 1;
+                }
+            }
+        }
+
+        function sortTable(column) {
+            const table = document.getElementById('crypto-table');
+            const rows = Array.from(table.tBodies[0].rows);
+            const sortAsc = table.getAttribute('data-sort-asc') !== 'true';
+            table.setAttribute('data-sort-asc', sortAsc);
+
+            rows.sort((a, b) => {
+                const aText = a.cells[column === 'name' ? 0 : column === 'price' ? 1 : 2].textContent.replace(/[$,]/g, '');
+                const bText = b.cells[column === 'name' ? 0 : column === 'price' ? 1 : 2].textContent.replace(/[$,]/g, '');
+                return sortAsc ? aText - bText : bText - aText;
+            });
+
+            rows.forEach(row => table.tBodies[0].appendChild(row));
+        }
+
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (currentPage > 1) {
+                updateCryptoPrices(currentPage - 1);
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => updateCryptoPrices(currentPage + 1));
+
+        async function updateForexPrices() {
+            const forexData = await fetchData('http://api.exchangerate.host/live?access_key=329f26aca5d43ea3d0c64d5e80a4ba16');
+            const errorElement = document.getElementById('forex-error');
+            if (forexData && forexData.quotes) {
+                errorElement.textContent = '';
+                const tableBody = document.querySelector('#forex-table tbody');
+                tableBody.innerHTML = '';
+                for (const [pair, rate] of Object.entries(forexData.quotes)) {
+                    const row = `<tr>
+                        <td>${pair}</td>
+                        <td>${rate.toFixed(4)}</td>
+                        <td>N/A</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                }
+            } else {
+                errorElement.textContent = 'Failed to load forex data.';
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.table-container').forEach(tc => tc.classList.remove('active'));
+
+            tab.classList.add('active');
+            const targetId = tab.getAttribute('data-tab') + '-container';
+            document.getElementById(targetId).classList.add('active');
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => switchTab(tab));
+        });
+
+        function init() {
+            updateCryptoPrices();
+            updateForexPrices();
+            setInterval(updateCryptoPrices, 60000); // Update crypto prices every minute
+            setInterval(updateForexPrices, 60000); // Update forex rates every minute
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

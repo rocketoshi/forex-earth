@@ -17,6 +17,11 @@
             padding: 1rem 0;
             text-align: center;
         }
+        .slogan {
+            font-size: 1.2rem;
+            color: #bbb;
+            margin-top: 0.5rem;
+        }
         .content {
             padding: 20px;
         }
@@ -92,7 +97,7 @@
 <body>
     <header>
         <h1>Forex.Earth</h1>
-        <p>Real-Time Cryptocurrency and Forex Prices</p>
+        <p class="slogan">Connecting Earth, Bit by Bit</p>
     </header>
     <div class="content">
         <div class="tabs">
@@ -188,39 +193,19 @@
             }
         }
 
-        function sortTable(column) {
-            const table = document.getElementById('crypto-table');
-            const rows = Array.from(table.tBodies[0].rows);
-            const sortAsc = table.getAttribute('data-sort-asc') !== 'true';
-            table.setAttribute('data-sort-asc', sortAsc);
-
-            rows.sort((a, b) => {
-                const aText = a.cells[column === 'name' ? 0 : column === 'price' ? 1 : 2].textContent.replace(/[$,]/g, '');
-                const bText = b.cells[column === 'name' ? 0 : column === 'price' ? 1 : 2].textContent.replace(/[$,]/g, '');
-                return sortAsc ? aText - bText : bText - aText;
-            });
-
-            rows.forEach(row => table.tBodies[0].appendChild(row));
-        }
-
-        document.getElementById('prev-page').addEventListener('click', () => {
-            if (currentPage > 1) {
-                updateCryptoPrices(currentPage - 1);
-            }
-        });
-
-        document.getElementById('next-page').addEventListener('click', () => updateCryptoPrices(currentPage + 1));
-
         async function updateForexPrices() {
-            const forexData = await fetchData('http://api.exchangerate.host/live?access_key=329f26aca5d43ea3d0c64d5e80a4ba16');
+            const forexData = await fetchData('https://api.exchangeratesapi.io/v1/latest?access_key=b20fe62770f44afe8d96238cf97c7e34');
             const errorElement = document.getElementById('forex-error');
-            if (forexData && forexData.quotes) {
+            if (forexData && forexData.rates) {
                 errorElement.textContent = '';
                 const tableBody = document.querySelector('#forex-table tbody');
                 tableBody.innerHTML = '';
-                for (const [pair, rate] of Object.entries(forexData.quotes)) {
+                for (const [currency, rate] of Object.entries(forexData.rates)) {
+                    const base = forexData.base;
+                    const country = currency.slice(0, 2).toLowerCase();
+                    const flagUrl = `https://flagcdn.com/w40/${country}.png`;
                     const row = `<tr>
-                        <td>${pair}</td>
+                        <td><img src="${flagUrl}" alt="Flag" onerror="this.style.display='none'">${base}/${currency}</td>
                         <td>${rate.toFixed(4)}</td>
                         <td>N/A</td>
                     </tr>`;

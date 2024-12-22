@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex.Earth - Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            text-align: center;
+        }
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 1rem 0;
+        }
+        .container {
+            margin: 20px auto;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .dropdown, .amount, .output, button {
+            margin: 10px 0;
+        }
+        select, input {
+            padding: 10px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        .output {
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Forex.Earth Converter</h1>
+        <p>Convert Between Fiat and Cryptocurrency</p>
+    </header>
+    <div class="container">
+        <h2>Currency Converter</h2>
+        <div class="amount">
+            <input type="number" id="amount" placeholder="Enter amount" />
+        </div>
+        <div class="dropdown">
+            <label for="fromCurrency">From:</label>
+            <select id="fromCurrency"></select>
+            <label for="toCurrency">To:</label>
+            <select id="toCurrency"></select>
+        </div>
+        <button onclick="swapCurrencies()">Swap</button>
+        <button onclick="convertCurrency()">Convert</button>
+        <div class="output" id="output">Conversion Result</div>
+    </div>
+
+    <script>
+        const fiatAPI = "https://api.exchangeratesapi.io/v1/latest?access_key=b20fe62770f44afe8d96238cf97c7e34";
+        const cryptoAPI = "https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd";
+        let fiatRates = {};
+        let cryptoRates = {};
+
+        async function fetchCurrencies() {
+            try {
+                // Fetch fiat rates
+                const fiatResponse = await fetch(fiatAPI);
+                const fiatData = await fiatResponse.json();
+                fiatRates = fiatData.rates;
+
+                // Fetch cryptocurrency rates
+                const cryptoResponse = await fetch(cryptoAPI);
+                const cryptoData = await cryptoResponse.json();
+                cryptoRates = cryptoData;
+
+                // Populate dropdowns
+                const fromCurrency = document.getElementById("fromCurrency");
+                const toCurrency = document.getElementById("toCurrency");
+
+                // Add fiat currencies
+                Object.keys(fiatRates).forEach((currency) => {
+                    const option1 = document.createElement("option");
+                    option1.value = currency;
+                    option1.text = currency;
+                    fromCurrency.add(option1);
+
+                    const option2 = document.createElement("option");
+                    option2.value = currency;
+                    option2.text = currency;
+                    toCurrency.add(option2);
+                });
+
+                // Add cryptocurrencies
+                Object.keys(cryptoRates).forEach((crypto) => {
+                    const option1 = document.createElement("option");
+                    option1.value = crypto;
+                    option1.text = crypto.toUpperCase();
+                    fromCurrency.add(option1);
+
+                    const option2 = document.createElement("option");
+                    option2.value = crypto;
+                    option2.text = crypto.toUpperCase();
+                    toCurrency.add(option2);
+                });
+
+                fromCurrency.value = "USD";
+                toCurrency.value = "BTC";
+            } catch (error) {
+                console.error("Error fetching currencies:", error);
+            }
+        }
+
+        function swapCurrencies() {
+            const fromCurrency = document.getElementById("fromCurrency");
+            const toCurrency = document.getElementById("toCurrency");
+            const temp = fromCurrency.value;
+            fromCurrency.value = toCurrency.value;
+            toCurrency.value = temp;
+        }
+
+        function convertCurrency() {
+            const amount = parseFloat(document.getElementById("amount").value);
+            const fromCurrency = document.getElementById("fromCurrency").value;
+            const toCurrency = document.getElementById("toCurrency").value;
+
+            if (isNaN(amount)) {
+                document.getElementById("output").textContent = "Please enter a valid amount.";
+                return;
+            }
+
+            let fromRate = 1;
+            let toRate = 1;
+
+            // Get rates for fiat and crypto
+            if (fiatRates[fromCurrency]) fromRate = fiatRates[fromCurrency];
+            if (cryptoRates[fromCurrency]) fromRate = cryptoRates[fromCurrency].usd;
+            if (fiatRates[toCurrency]) toRate = fiatRates[toCurrency];
+            if (cryptoRates[toCurrency]) toRate = cryptoRates[toCurrency].usd;
+
+            // Calculate conversion
+            const convertedAmount = (amount / fromRate) * toRate;
+
+            document.getElementById("output").textContent = `${amount} ${fromCurrency} = ${convertedAmount.toFixed(4)} ${toCurrency}`;
+        }
+
+        window.onload = fetchCurrencies;
+    </script>
+</body>
+</html>
